@@ -1,73 +1,55 @@
-from flask import Flask, request, jsonify, g
-from auth_service import AuthService
-from jwt_utils import JWTManager
-from middleware import create_auth_middleware
-from models import Role
-from exceptions import (
-    InvalidCredentialsError,
-    UserAlreadyExistsError,
-    AuthenticationError
-)
+from .config import OpenAIConfig
+from .openai_client import OpenAIClient
+from .diagram_analyzer import DiagramAnalyzer, ErrorCorrector, DiagramEnhancer
 
-app = Flask(__name__)
-
-# Initialize services
-jwt_manager = JWTManager(secret_key="your-secret-key-change-in-production")
-auth_service = AuthService(jwt_manager)
-require_auth, require_roles = create_auth_middleware(auth_service)
-
-@app.route('/register', methods=['POST'])
-def register():
-    try:
-        data = request.get_json()
-        username = data.get('username')
-        password = data.get('password')
-        
-        user = auth_service.register(username, password)
-        return jsonify({
-            'message': 'User registered successfully',
-            'username': user.username
-        }), 201
-        
-    except (ValueError, UserAlreadyExistsError) as e:
-        return jsonify({'error': str(e)}), 400
-
-@app.route('/login', methods=['POST'])
-def login():
-    try:
-        data = request.get_json()
-        username = data.get('username')
-        password = data.get('password')
-        
-        token = auth_service.login(username, password)
-        return jsonify({'token': token}), 200
-        
-    except InvalidCredentialsError as e:
-        return jsonify({'error': str(e)}), 401
-
-@app.route('/profile', methods=['GET'])
-@require_auth
-def profile():
-    return jsonify({
-        'username': g.current_user,
-        'roles': g.current_roles
-    })
-
-@app.route('/admin', methods=['GET'])
-@require_auth
-@require_roles([Role.ADMIN])
-def admin_only():
-    return jsonify({'message': 'Admin access granted'})
-
-@app.route('/moderator', methods=['GET'])
-@require_auth
-@require_roles([Role.ADMIN, Role.MODERATOR])
-def moderator_access():
-    return jsonify({'message': 'Moderator access granted'})
-
-if __name__ == '__main__':
-    # Create sample admin user
-    auth_service.register('admin', 'admin123', [Role.ADMIN])
-    auth_service.register('user', 'user123', [Role.USER])
+class DiagramAnalysisService:
+    """Main service orchestrating diagram analysis"""
     
-    app.run(debug=True)
+    def __init__(self, config: OpenAIConfig = None):
+        self.config = config or OpenAIConfig.from_env()
+        self.client = OpenAIClient(self.config)
+        self.analyzer = DiagramAnalyzer(self.client)
+        self.corrector = ErrorCorrector(self.client)
+        self.enhancer = DiagramEnhancer(self.client)
+    
+    def full_analysis(self, diagram_description: str) -> dict:
+        """Perform complete diagram analysis with corrections and enhancements"""
+        # Main analysis
+        result = self.analyzer.analyze_diagram(diagram_description)
+        
+        # Get correction suggestions
+        corrections = self.corrector.suggest_corrections(
+            diagram_description, result.errors
+        )
+        
+        # Get enhancement suggestions
+        enhancements = self.enhancer.suggest_enhancements(
+            diagram_description, result.diagram_type
+        )
+        
+        return {
+            'analysis': result,
+            'correction_steps': corrections,
+            'enhancement_suggestions': enhancements
+        }
+
+# Example usage
+def main():
+    service = DiagramAnalysisService()
+    
+    diagram_desc = """
+    A simple flowchart showing user login process:
+    Start -> Enter credentials -> Check database -> Valid? -> Login success
+    If invalid -> Show error -> Back to enter credentials
+    """
+    
+    results = service.full_analysis(diagram_desc)
+    
+    print("Analysis Results:")
+    print(f"Type: {results['analysis'].diagram_type.value}")
+    print(f"Summary: {results['analysis'].summary}")
+    print(f"Errors found: {len(results['analysis'].errors)}")
+    print(f"Enhancements suggested: {len(results['analysis'].enhancements)}")
+
+if __name__ == "__main__":
+    main()
