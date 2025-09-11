@@ -1,20 +1,33 @@
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 from enum import Enum
 
-class Role(Enum):
-    USER = "user"
-    MODERATOR = "moderator"
-    ADMIN = "admin"
+class DiagramType(Enum):
+    FLOWCHART = "flowchart"
+    UML = "uml"
+    NETWORK = "network"
+    ARCHITECTURE = "architecture"
+    OTHER = "other"
 
 @dataclass
-class User:
-    username: str
-    password_hash: str
-    roles: List[Role]
-    
-    def has_role(self, role: Role) -> bool:
-        return role in self.roles
-    
-    def has_any_role(self, roles: List[Role]) -> bool:
-        return any(role in self.roles for role in roles)
+class DiagramError:
+    type: str
+    description: str
+    severity: str  # low, medium, high
+    suggested_fix: str
+
+@dataclass
+class Enhancement:
+    category: str
+    description: str
+    priority: str  # low, medium, high
+    implementation_hint: str
+
+@dataclass
+class DiagramAnalysisResult:
+    diagram_type: DiagramType
+    summary: str
+    errors: List[DiagramError]
+    enhancements: List[Enhancement]
+    confidence_score: float
+    analysis_notes: Optional[str] = None
