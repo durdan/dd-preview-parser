@@ -1,17 +1,17 @@
 {
-  "name": "mermaid-api-service",
+  "name": "plantuml-parsing-system",
   "version": "1.0.0",
-  "description": "Mermaid diagram parsing and rendering API",
-  "main": "src/server.js",
+  "description": "PlantUML diagram parsing and rendering system",
+  "main": "src/index.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
-    "test": "jest"
+    "start": "node src/index.js",
+    "test": "jest",
+    "dev": "nodemon src/index.js"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "mermaid": "^10.6.1",
-    "jsdom": "^22.1.0",
+    "plantuml-encoder": "^1.4.0",
+    "axios": "^1.6.0",
     "cors": "^2.8.5"
   },
   "devDependencies": {
