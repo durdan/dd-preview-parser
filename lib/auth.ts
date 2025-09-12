@@ -1,64 +1,71 @@
-import { NextAuthOptions } from 'next-auth';
-import CredentialsProvider from 'next-auth/providers/credentials';
+import { jwtVerify, SignJWT } from 'jose';
+import { User, Session } from '@/types/auth';
 
-// For development, we'll use a simple in-memory session
-// In production, you should configure MongoDB properly
-export const authOptions: NextAuthOptions = {
-  // Disable database adapter for now to avoid MongoDB connection issues
-  // adapter: MongoDBAdapter(clientPromise),
-  secret: process.env.NEXTAUTH_SECRET || 'development-secret-key',
-  session: {
-    strategy: 'jwt',
-  },
-  providers: [
-    CredentialsProvider({
-      name: 'credentials',
-      credentials: {
-        email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' }
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error('Email and password required');
-        }
+const JWT_SECRET = new TextEncoder().encode(
+  process.env.JWT_SECRET || 'your-secret-key'
+);
 
-        // For development, accept any email/password combination
-        // In production, implement proper authentication
-        if (credentials.email && credentials.password) {
-          return {
-            id: '1',
-            email: credentials.email,
-            name: credentials.email.split('@')[0],
-          };
-        }
+export class AuthError extends Error {
+  constructor(message: string, public statusCode: number = 401) {
+    super(message);
+    this.name = 'AuthError';
+  }
+}
 
-        return null;
-      }
-    })
-  ],
-  session: {
-    strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-  },
-  jwt: {
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-  },
-  pages: {
-    signIn: '/auth/login',
-    signUp: '/auth/register',
-  },
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (token) {
-        session.user.id = token.id as string;
-      }
-      return session;
-    },
-  },
-};
+export async function verifyToken(token: string): Promise<User> {
+  try {
+    const { payload } = await jwtVerify(token, JWT_SECRET);
+    
+    if (!payload.sub || !payload.email || !payload.roles) {
+      throw new AuthError('Invalid token payload');
+    }
+
+    return {
+      id: payload.sub as string,
+      email: payload.email as string,
+      roles: payload.roles as string[],
+      permissions: payload.permissions as string[] || []
+    };
+  } catch (error) {
+    throw new AuthError('Invalid or expired token');
+  }
+}
+
+export async function createToken(user: User): Promise<string> {
+  return await new SignJWT({
+    sub: user.id,
+    email: user.email,
+    roles: user.roles,
+    permissions: user.permissions
+  })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setExpirationTime('24h')
+    .setIssuedAt()
+    .sign(JWT_SECRET);
+}
+
+export function hasRole(user: User, requiredRoles: string[]): boolean {
+  return requiredRoles.some(role => user.roles.includes(role));
+}
+
+export function hasPermission(user: User, requiredPermissions: string[]): boolean {
+  return requiredPermissions.some(permission => 
+    user.permissions.includes(permission)
+  );
+}
+
+export function extractTokenFromRequest(request: Request): string | null {
+  const authHeader = request.headers.get('authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    return authHeader.substring(7);
+  }
+
+  // Check for token in cookies (for browser requests)
+  const cookieHeader = request.headers.get('cookie');
+  if (cookieHeader) {
+    const tokenMatch = cookieHeader.match(/auth-token=([^;]+)/);
+    return tokenMatch ? tokenMatch[1] : null;
+  }
+
+  return null;
+}

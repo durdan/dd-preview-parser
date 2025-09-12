@@ -1,54 +1,42 @@
-import connectDB from '../../../lib/mongodb';
-import Diagram from '../../../models/Diagram';
-import { validateDiagramInput } from '../../../lib/validation';
-import { handleError, createErrorResponse } from '../../../lib/errorHandler';
+import { DiagramService } from '../../../lib/diagram-service.js';
+import { extractUserFromRequest } from '../../../lib/auth.js';
+
+const diagramService = new DiagramService();
 
 export default async function handler(req, res) {
-  await connectDB();
-
-  switch (req.method) {
-    case 'GET':
-      return await getDiagrams(req, res);
-    case 'POST':
-      return await createDiagram(req, res);
-    default:
-      return res.status(405).json({
-        success: false,
-        error: 'Method not allowed'
-      });
-  }
-}
-
-async function getDiagrams(req, res) {
   try {
-    const diagrams = await Diagram.find({}).sort({ createdAt: -1 });
-    
-    return res.status(200).json({
-      success: true,
-      data: diagrams,
-      count: diagrams.length
-    });
-  } catch (error) {
-    return handleError(error, res);
-  }
-}
-
-async function createDiagram(req, res) {
-  try {
-    const validationErrors = validateDiagramInput(req.body);
-    
-    if (validationErrors.length > 0) {
-      const { status, response } = createErrorResponse(400, 'Validation failed', validationErrors);
-      return res.status(status).json(response);
+    if (req.method === 'GET') {
+      return await handleList(req, res);
+    } else if (req.method === 'POST') {
+      return await handleCreate(req, res);
+    } else {
+      res.setHeader('Allow', ['GET', 'POST']);
+      return res.status(405).json({ error: 'Method not allowed' });
     }
-
-    const diagram = await Diagram.create(req.body);
-    
-    return res.status(201).json({
-      success: true,
-      data: diagram
-    });
   } catch (error) {
-    return handleError(error, res);
+    console.error('API Error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+async function handleList(req, res) {
+  const user = extractUserFromRequest(req);
+  const includePublic = req.query.public !== 'false';
+  
+  const diagrams = await diagramService.listDiagrams(user?.id, includePublic);
+  return res.status(200).json({ diagrams });
+}
+
+async function handleCreate(req, res) {
+  const user = extractUserFromRequest(req);
+  if (!user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  
+  try {
+    const diagram = await diagramService.createDiagram(req.body, user.id);
+    return res.status(201).json({ diagram });
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
   }
 }
