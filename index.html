@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client-Side Diagram Renderer</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/plantuml-encoder@1.4.0/dist/plantuml-encoder.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Diagram Renderer</h1>
+        
+        <div class="input-section">
+            <div class="controls">
+                <select id="diagramType">
+                    <option value="mermaid">Mermaid</option>
+                    <option value="plantuml">PlantUML</option>
+                </select>
+                <button id="renderBtn">Render Diagram</button>
+                <button id="clearBtn">Clear</button>
+            </div>
+            
+            <textarea id="diagramInput" placeholder="Enter your diagram code here..."></textarea>
+        </div>
+        
+        <div class="output-section">
+            <div id="errorContainer" class="error-container hidden"></div>
+            <div id="diagramOutput" class="diagram-output"></div>
+        </div>
+    </div>
+    
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
