@@ -1,28 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverComponentsExternalPackages: ['canvas', 'sharp']
+    appDir: true,
   },
-  images: {
-    domains: ['localhost'],
-    formats: ['image/webp', 'image/avif']
+  typescript: {
+    // Dangerously allow production builds to successfully complete even if type errors
+    ignoreBuildErrors: false,
   },
-  webpack: (config) => {
-    config.externals.push({
-      canvas: 'canvas'
-    });
-    
-    // Handle mermaid module resolution
-    config.resolve.fallback = {
-      ...config.resolve.fallback,
-      fs: false,
-      path: false,
-      crypto: false,
-    };
-    
-    return config;
+  eslint: {
+    // Warning: This allows production builds to successfully complete even if ESLint errors
+    ignoreDuringBuilds: false,
   },
-  transpilePackages: ['mermaid']
-};
+}
 
-module.exports = nextConfig;
+module.exports = nextConfig
