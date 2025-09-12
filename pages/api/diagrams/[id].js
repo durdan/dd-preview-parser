@@ -1,94 +1,81 @@
-import connectDB from '../../../lib/mongodb';
-import Diagram from '../../../models/Diagram';
-import { validateDiagramInput, validateObjectId } from '../../../lib/validation';
-import { handleError, createErrorResponse } from '../../../lib/errorHandler';
+import { DiagramService } from '../../../lib/diagram-service.js';
+import { extractUserFromRequest } from '../../../lib/auth.js';
+
+const diagramService = new DiagramService();
 
 export default async function handler(req, res) {
-  await connectDB();
-
   const { id } = req.query;
-
-  if (!validateObjectId(id)) {
-    const { status, response } = createErrorResponse(400, 'Invalid diagram ID');
-    return res.status(status).json(response);
-  }
-
-  switch (req.method) {
-    case 'GET':
-      return await getDiagram(req, res, id);
-    case 'PUT':
-      return await updateDiagram(req, res, id);
-    case 'DELETE':
-      return await deleteDiagram(req, res, id);
-    default:
-      return res.status(405).json({
-        success: false,
-        error: 'Method not allowed'
-      });
+  
+  try {
+    if (req.method === 'GET') {
+      return await handleGet(req, res, id);
+    } else if (req.method === 'PUT') {
+      return await handleUpdate(req, res, id);
+    } else if (req.method === 'DELETE') {
+      return await handleDelete(req, res, id);
+    } else {
+      res.setHeader('Allow', ['GET', 'PUT', 'DELETE']);
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+  } catch (error) {
+    console.error('API Error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }
 
-async function getDiagram(req, res, id) {
+async function handleGet(req, res, id) {
+  const user = extractUserFromRequest(req);
+  
   try {
-    const diagram = await Diagram.findById(id);
-    
-    if (!diagram) {
-      const { status, response } = createErrorResponse(404, 'Diagram not found');
-      return res.status(status).json(response);
-    }
-
-    return res.status(200).json({
-      success: true,
-      data: diagram
-    });
+    const diagram = await diagramService.getDiagram(id, user?.id);
+    return res.status(200).json({ diagram });
   } catch (error) {
-    return handleError(error, res);
+    if (error.message === 'Diagram not found') {
+      return res.status(404).json({ error: error.message });
+    }
+    if (error.message === 'Access denied') {
+      return res.status(403).json({ error: error.message });
+    }
+    throw error;
   }
 }
 
-async function updateDiagram(req, res, id) {
+async function handleUpdate(req, res, id) {
+  const user = extractUserFromRequest(req);
+  if (!user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  
   try {
-    const validationErrors = validateDiagramInput(req.body);
-    
-    if (validationErrors.length > 0) {
-      const { status, response } = createErrorResponse(400, 'Validation failed', validationErrors);
-      return res.status(status).json(response);
-    }
-
-    const diagram = await Diagram.findByIdAndUpdate(
-      id,
-      req.body,
-      { new: true, runValidators: true }
-    );
-
-    if (!diagram) {
-      const { status, response } = createErrorResponse(404, 'Diagram not found');
-      return res.status(status).json(response);
-    }
-
-    return res.status(200).json({
-      success: true,
-      data: diagram
-    });
+    const diagram = await diagramService.updateDiagram(id, req.body, user.id);
+    return res.status(200).json({ diagram });
   } catch (error) {
-    return handleError(error, res);
+    if (error.message === 'Diagram not found') {
+      return res.status(404).json({ error: error.message });
+    }
+    if (error.message === 'Access denied') {
+      return res.status(403).json({ error: error.message });
+    }
+    return res.status(400).json({ error: error.message });
   }
 }
 
-async function deleteDiagram(req, res, id) {
+async function handleDelete(req, res, id) {
+  const user = extractUserFromRequest(req);
+  if (!user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  
   try {
-    const diagram = await Diagram.findByIdAndDelete(id);
-
-    if (!diagram) {
-      const { status, response } = createErrorResponse(404, 'Diagram not found');
-      return res.status(status).json(response);
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: 'Diagram deleted successfully'
-    });
+    const result = await diagramService.deleteDiagram(id, user.id);
+    return res.status(200).json(result);
   } catch (error) {
-    return handleError(error, res);
+    if (error.message === 'Diagram not found') {
+      return res.status(404).json({ error: error.message });
+    }
+    if (error.message === 'Access denied') {
+      return res.status(403).json({ error: error.message });
+    }
+    throw error;
   }
 }
