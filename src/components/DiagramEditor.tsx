@@ -1,146 +1,217 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import Editor from '@monaco-editor/react';
-import DiagramPreview from './DiagramPreview';
-import { DiagramParser } from '../utils/DiagramParser';
-import { useOptimizedCallback } from '../utils/PerformanceOptimizer';
-import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
-import { registerDiagramLanguage, DIAGRAM_LANGUAGE, MONACO_OPTIONS } from './MonacoConfig';
-import { EditorState } from '../types/diagram';
+import React, { useState, useCallback, useMemo } from 'react';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
-const INITIAL_CONTENT = `graph TD
-    A[Begin Process] --> B[Validate Input]
-    B --> C{Is Valid?}
-    C -->|Yes| D[Process Data]
-    C -->|No| E[Complete]
-    D --> E
-    
-    style A fill:#e1f5fe
-    style E fill:#c8e6c9
-    style C fill:#fff3e0`;
+export type DiagramType = 'mermaid' | 'plantuml' | 'unknown';
 
-const DiagramEditor: React.FC = () => {
-  const [editorState, setEditorState] = useState<EditorState>(() => {
-    // Since we're using Mermaid syntax now, we'll set it as valid by default
-    return {
-      content: INITIAL_CONTENT,
-      parsedDiagram: { nodes: [], connections: [], errors: [] },
-      isValid: true
-    };
-  });
+interface DiagramEditorProps {
+  initialContent?: string;
+  onContentChange?: (content: string, type: DiagramType) => void;
+  onDiagramTypeChange?: (type: DiagramType) => void;
+}
 
-  const layout = useResponsiveLayout();
+// PlantUML syntax detection
+export const isPlantUMLDiagram = (content: string): boolean => {
+  if (!content || typeof content !== 'string') {
+    return false;
+  }
 
-  // Helper function to detect if content is a Mermaid diagram
-  const isMermaidDiagram = (content: string): boolean => {
-    const mermaidKeywords = [
-      'graph', 'flowchart', 'sequenceDiagram', 'classDiagram', 
-      'stateDiagram', 'erDiagram', 'journey', 'gantt', 'pie', 'gitgraph'
-    ];
-    
-    const firstLine = content.split('\n')[0]?.trim() || '';
-    return mermaidKeywords.some(keyword => firstLine.toLowerCase().includes(keyword.toLowerCase()));
-  };
+  const trimmedContent = content.trim();
+  
+  // Check for PlantUML start/end tags
+  const hasStartEndTags = /@startuml|@enduml/i.test(trimmedContent);
+  if (hasStartEndTags) {
+    return true;
+  }
 
-  // Optimized content change handler
-  const handleContentChange = useOptimizedCallback(
-    (value: string | undefined) => {
-      if (value === undefined) return;
-      
-      // Check if it's a Mermaid diagram
-      const isMermaid = isMermaidDiagram(value);
-      
-      if (isMermaid) {
-        // For Mermaid diagrams, assume valid (Mermaid will handle validation)
-        setEditorState({
-          content: value,
-          parsedDiagram: { nodes: [], connections: [], errors: [] },
-          isValid: true
-        });
-      } else {
-        // For custom syntax, use the parser
-        const parsedDiagram = DiagramParser.parse(value);
-        setEditorState({
-          content: value,
-          parsedDiagram,
-          isValid: parsedDiagram.errors.length === 0
-        });
-      }
-    },
-    [],
-    300 // 300ms debounce
+  // Check for PlantUML-specific keywords
+  const plantUMLKeywords = [
+    // UML diagram types
+    '@startuml', '@enduml', '@startmindmap', '@endmindmap',
+    '@startsalt', '@endsalt', '@startgantt', '@endgantt',
+    // Class diagram keywords
+    'class\\s+\\w+', 'interface\\s+\\w+', 'abstract\\s+class',
+    'enum\\s+\\w+', 'package\\s+\\w+',
+    // Relationship operators
+    '\\|\\|--\\|\\|', '\\}\\|--\\|\\{', '\\|\\>--\\|\\>',
+    '-->', '<--', '\\.\\.>', '<\\.\\.', '==>', '<==',
+    // Activity diagram
+    'start', 'stop', 'end', ':.*?;', 'if\\s*\\(.*?\\)',
+    // Sequence diagram
+    'participant\\s+\\w+', 'actor\\s+\\w+', 'boundary\\s+\\w+',
+    'control\\s+\\w+', 'entity\\s+\\w+', 'database\\s+\\w+',
+    // Component diagram
+    'component\\s+\\w+', 'node\\s+\\w+',
+    // State diagram
+    'state\\s+\\w+', '\\[\\*\\]'
+  ];
+
+  const keywordPattern = new RegExp(plantUMLKeywords.join('|'), 'i');
+  return keywordPattern.test(trimmedContent);
+};
+
+// Mermaid syntax detection
+export const isMermaidDiagram = (content: string): boolean => {
+  if (!content || typeof content !== 'string') {
+    return false;
+  }
+
+  const trimmedContent = content.trim();
+  
+  // Mermaid diagram type keywords
+  const mermaidKeywords = [
+    'graph\\s+(TD|TB|BT|RL|LR)',
+    'flowchart\\s+(TD|TB|BT|RL|LR)',
+    'sequenceDiagram',
+    'classDiagram',
+    'stateDiagram',
+    'erDiagram',
+    'journey',
+    'gantt',
+    'pie\\s+title',
+    'gitgraph',
+    'mindmap',
+    'timeline'
+  ];
+
+  const keywordPattern = new RegExp(`^\\s*(${mermaidKeywords.join('|')})`, 'im');
+  return keywordPattern.test(trimmedContent);
+};
+
+// Determine diagram type
+export const detectDiagramType = (content: string): DiagramType => {
+  if (!content || content.trim().length === 0) {
+    return 'unknown';
+  }
+
+  // PlantUML has priority if it has explicit tags
+  if (content.includes('@startuml') || content.includes('@enduml')) {
+    return 'plantuml';
+  }
+
+  // Check Mermaid first (more specific patterns)
+  if (isMermaidDiagram(content)) {
+    return 'mermaid';
+  }
+
+  // Then check PlantUML
+  if (isPlantUMLDiagram(content)) {
+    return 'plantuml';
+  }
+
+  return 'unknown';
+};
+
+// Custom PlantUML syntax highlighting
+const PlantUMLHighlighter: React.FC<{ children: string }> = ({ children }) => {
+  const highlightedCode = useMemo(() => {
+    return children
+      .replace(/(@startuml|@enduml|@startmindmap|@endmindmap)/g, '<span style="color: #569cd6;">$1</span>')
+      .replace(/(class|interface|abstract|enum|package|participant|actor|component|node|state)\s+(\w+)/g, 
+               '<span style="color: #4ec9b0;">$1</span> <span style="color: #dcdcaa;">$2</span>')
+      .replace(/(-->|<--|\.\.>|<\.\.|==>|<==|\|\|--\|\||\}\|--\|\{)/g, '<span style="color: #c586c0;">$1</span>')
+      .replace(/(:.*?;)/g, '<span style="color: #ce9178;">$1</span>')
+      .replace(/(if\s*\(.*?\)|start|stop|end)/g, '<span style="color: #569cd6;">$1</span>');
+  }, [children]);
+
+  return (
+    <pre style={{ 
+      backgroundColor: '#1e1e1e', 
+      color: '#d4d4d4', 
+      padding: '1rem',
+      borderRadius: '4px',
+      overflow: 'auto'
+    }}>
+      <code dangerouslySetInnerHTML={{ __html: highlightedCode }} />
+    </pre>
+  );
+};
+
+export const DiagramEditor: React.FC<DiagramEditorProps> = ({
+  initialContent = '',
+  onContentChange,
+  onDiagramTypeChange
+}) => {
+  const [content, setContent] = useState(initialContent);
+  const [diagramType, setDiagramType] = useState<DiagramType>(() => 
+    detectDiagramType(initialContent)
   );
 
-  // Register Monaco language on mount
-  useEffect(() => {
-    registerDiagramLanguage();
-  }, []);
+  const handleContentChange = useCallback((newContent: string) => {
+    setContent(newContent);
+    
+    const detectedType = detectDiagramType(newContent);
+    
+    if (detectedType !== diagramType) {
+      setDiagramType(detectedType);
+      onDiagramTypeChange?.(detectedType);
+    }
+    
+    onContentChange?.(newContent, detectedType);
+  }, [diagramType, onContentChange, onDiagramTypeChange]);
 
-  const editorStyle: React.CSSProperties = {
-    height: layout.splitOrientation === 'vertical' ? '50vh' : '100vh',
-    width: layout.splitOrientation === 'horizontal' ? '50%' : '100%',
-  };
-
-  const previewStyle: React.CSSProperties = {
-    height: layout.splitOrientation === 'vertical' ? '50vh' : '100vh',
-    width: layout.splitOrientation === 'horizontal' ? '50%' : '100%',
+  const renderSyntaxHighlighter = () => {
+    if (diagramType === 'plantuml') {
+      return <PlantUMLHighlighter>{content}</PlantUMLHighlighter>;
+    } else if (diagramType === 'mermaid') {
+      return (
+        <SyntaxHighlighter
+          language="mermaid"
+          style={tomorrow}
+          customStyle={{
+            margin: 0,
+            borderRadius: '4px'
+          }}
+        >
+          {content}
+        </SyntaxHighlighter>
+      );
+    } else {
+      return (
+        <SyntaxHighlighter
+          language="text"
+          style={tomorrow}
+          customStyle={{
+            margin: 0,
+            borderRadius: '4px'
+          }}
+        >
+          {content}
+        </SyntaxHighlighter>
+      );
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-6">
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
-            <h1 className="text-2xl font-bold mb-2">Diagram Editor</h1>
-            <p className="text-blue-100">Create beautiful diagrams with real-time preview</p>
-          </div>
-          
-          {/* Main Content */}
-          <div className={`grid ${layout.isMobile ? 'grid-cols-1' : 'grid-cols-2'} gap-0 min-h-[600px]`}>
-            {/* Editor Panel */}
-            <div className="border-r border-gray-200">
-              <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-800">Diagram Code</h2>
-                <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  editorState.isValid 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-red-100 text-red-800'
-                }`}>
-                  {editorState.isValid ? '✓ Valid' : '⚠ Errors'}
-                </div>
-              </div>
-              <div className="h-[500px]">
-                <Editor
-                  height="100%"
-                  language={DIAGRAM_LANGUAGE}
-                  value={editorState.content}
-                  onChange={handleContentChange}
-                  options={MONACO_OPTIONS}
-                />
-              </div>
-            </div>
-            
-            {/* Preview Panel */}
-            <div className="bg-white">
-              <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-800">Live Preview</h2>
-                <div className="text-sm text-gray-600">
-                  {editorState.parsedDiagram.nodes.length} nodes, {editorState.parsedDiagram.connections.length} connections
-                </div>
-              </div>
-              <div className="h-[500px] p-4">
-                <DiagramPreview 
-                  content={editorState.content}
-                  onContentChange={(newContent) => {
-                    setEditorState(prev => ({
-                      ...prev,
-                      content: newContent
-                    }));
-                  }}
-                />
-              </div>
-            </div>
-          </div>
+    <div className="diagram-editor">
+      <div className="editor-header">
+        <span className="diagram-type-indicator">
+          Type: <strong>{diagramType.toUpperCase()}</strong>
+        </span>
+      </div>
+      
+      <div className="editor-container" style={{ display: 'flex', gap: '1rem' }}>
+        <div className="editor-input" style={{ flex: 1 }}>
+          <textarea
+            value={content}
+            onChange={(e) => handleContentChange(e.target.value)}
+            placeholder="Enter your diagram code here..."
+            style={{
+              width: '100%',
+              height: '400px',
+              fontFamily: 'monospace',
+              fontSize: '14px',
+              padding: '1rem',
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              resize: 'vertical'
+            }}
+          />
+        </div>
+        
+        <div className="editor-preview" style={{ flex: 1 }}>
+          <h4>Syntax Highlighting Preview:</h4>
+          {renderSyntaxHighlighter()}
         </div>
       </div>
     </div>
