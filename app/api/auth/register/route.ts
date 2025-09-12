@@ -1,47 +1,43 @@
-import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '../../../../lib/mongodb';
-import User from '../../../../models/User';
+import { NextRequest } from 'next/server';
+import { successResponse, errorResponse, validateRequired, validateEmail } from '../../utils/response';
+import { createUser, findUserByEmail } from '../../utils/storage';
+import { generateToken } from '../../utils/auth';
+import { RegisterRequest } from '../../types';
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, name } = await request.json();
-
-    if (!email || !password || !name) {
-      return NextResponse.json(
-        { error: 'Email, password, and name are required' },
-        { status: 400 }
-      );
+    const body: RegisterRequest = await request.json();
+    
+    const validation = validateRequired(body, ['email', 'password', 'name']);
+    if (validation) {
+      return errorResponse(validation);
     }
 
-    if (password.length < 6) {
-      return NextResponse.json(
-        { error: 'Password must be at least 6 characters' },
-        { status: 400 }
-      );
+    if (!validateEmail(body.email)) {
+      return errorResponse('Invalid email format');
     }
 
-    await connectDB();
-
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return NextResponse.json(
-        { error: 'User already exists' },
-        { status: 400 }
-      );
+    if (body.password.length < 6) {
+      return errorResponse('Password must be at least 6 characters');
     }
 
-    const user = new User({ email, password, name });
-    await user.save();
+    if (findUserByEmail(body.email)) {
+      return errorResponse('User already exists', 409);
+    }
 
-    return NextResponse.json(
-      { message: 'User created successfully' },
-      { status: 201 }
-    );
+    const user = createUser({
+      email: body.email,
+      name: body.name,
+      role: 'user'
+    });
+
+    const token = generateToken(user);
+
+    return successResponse({
+      user: { id: user.id, email: user.email, name: user.name, role: user.role },
+      token
+    }, 201);
   } catch (error) {
-    console.error('Registration error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return errorResponse('Registration failed', 500);
   }
 }
