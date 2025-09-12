@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { PerformanceOptimizer } from '../utils/PerformanceOptimizer';
 
 export interface LayoutConfig {
   isMobile: boolean;
@@ -35,5 +36,3 @@ export function useResponsiveLayout(): LayoutConfig {
 
   return layout;
 }
-
-import { PerformanceOptimizer } from '../utils/PerformanceOptimizer';

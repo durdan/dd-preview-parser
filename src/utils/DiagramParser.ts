@@ -1,9 +1,13 @@
 import { ParsedDiagram, DiagramNode, DiagramConnection } from '../types/diagram';
+import { PerformanceOptimizer } from './PerformanceOptimizer';
 
 export class DiagramParser {
   private static memoizedParse = PerformanceOptimizer.memoize(
     (content: string): ParsedDiagram => {
-      const lines = content.split('\n').filter(line => line.trim());
+      if (!content || typeof content !== 'string') {
+        return { nodes: [], connections: [], errors: ['No content provided'] };
+      }
+      const lines = content.split('\n').filter(line => line && line.trim());
       const nodes: DiagramNode[] = [];
       const connections: DiagramConnection[] = [];
       const errors: string[] = [];
@@ -56,5 +60,3 @@ export class DiagramParser {
     return this.memoizedParse(content);
   }
 }
-
-import { PerformanceOptimizer } from './PerformanceOptimizer';

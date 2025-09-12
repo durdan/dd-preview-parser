@@ -1,4 +1,4 @@
-import { editor } from 'monaco-editor';
+import * as monaco from 'monaco-editor';
 
 export const DIAGRAM_LANGUAGE = 'diagram';
 

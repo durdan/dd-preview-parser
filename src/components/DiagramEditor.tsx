@@ -7,43 +7,64 @@ import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 import { registerDiagramLanguage, DIAGRAM_LANGUAGE, MONACO_OPTIONS } from './MonacoConfig';
 import { EditorState } from '../types/diagram';
 
-const INITIAL_CONTENT = `// Diagram Editor - Define your flowchart
-start: Begin Process (start)
-process1: Validate Input (process)
-decision1: Is Valid? (decision)
-process2: Process Data (process)
-end: Complete (end)
-
-// Connections
-start -> process1
-process1 -> decision1
-decision1 -> process2 [Yes]
-decision1 -> end [No]
-process2 -> end`;
+const INITIAL_CONTENT = `graph TD
+    A[Begin Process] --> B[Validate Input]
+    B --> C{Is Valid?}
+    C -->|Yes| D[Process Data]
+    C -->|No| E[Complete]
+    D --> E
+    
+    style A fill:#e1f5fe
+    style E fill:#c8e6c9
+    style C fill:#fff3e0`;
 
 const DiagramEditor: React.FC = () => {
   const [editorState, setEditorState] = useState<EditorState>(() => {
-    const parsed = DiagramParser.parse(INITIAL_CONTENT);
+    // Since we're using Mermaid syntax now, we'll set it as valid by default
     return {
       content: INITIAL_CONTENT,
-      parsedDiagram: parsed,
-      isValid: parsed.errors.length === 0
+      parsedDiagram: { nodes: [], connections: [], errors: [] },
+      isValid: true
     };
   });
 
   const layout = useResponsiveLayout();
+
+  // Helper function to detect if content is a Mermaid diagram
+  const isMermaidDiagram = (content: string): boolean => {
+    const mermaidKeywords = [
+      'graph', 'flowchart', 'sequenceDiagram', 'classDiagram', 
+      'stateDiagram', 'erDiagram', 'journey', 'gantt', 'pie', 'gitgraph'
+    ];
+    
+    const firstLine = content.split('\n')[0]?.trim() || '';
+    return mermaidKeywords.some(keyword => firstLine.toLowerCase().includes(keyword.toLowerCase()));
+  };
 
   // Optimized content change handler
   const handleContentChange = useOptimizedCallback(
     (value: string | undefined) => {
       if (value === undefined) return;
       
-      const parsedDiagram = DiagramParser.parse(value);
-      setEditorState({
-        content: value,
-        parsedDiagram,
-        isValid: parsedDiagram.errors.length === 0
-      });
+      // Check if it's a Mermaid diagram
+      const isMermaid = isMermaidDiagram(value);
+      
+      if (isMermaid) {
+        // For Mermaid diagrams, assume valid (Mermaid will handle validation)
+        setEditorState({
+          content: value,
+          parsedDiagram: { nodes: [], connections: [], errors: [] },
+          isValid: true
+        });
+      } else {
+        // For custom syntax, use the parser
+        const parsedDiagram = DiagramParser.parse(value);
+        setEditorState({
+          content: value,
+          parsedDiagram,
+          isValid: parsedDiagram.errors.length === 0
+        });
+      }
     },
     [],
     300 // 300ms debounce
@@ -65,34 +86,62 @@ const DiagramEditor: React.FC = () => {
   };
 
   return (
-    <div className={`diagram-editor ${layout.splitOrientation}`}>
-      <div className="editor-panel" style={editorStyle}>
-        <div className="editor-header">
-          <h2>Diagram Code</h2>
-          <div className={`status-indicator ${editorState.isValid ? 'valid' : 'invalid'}`}>
-            {editorState.isValid ? '✓ Valid' : '⚠ Errors'}
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 py-6">
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
+            <h1 className="text-2xl font-bold mb-2">Diagram Editor</h1>
+            <p className="text-blue-100">Create beautiful diagrams with real-time preview</p>
+          </div>
+          
+          {/* Main Content */}
+          <div className={`grid ${layout.isMobile ? 'grid-cols-1' : 'grid-cols-2'} gap-0 min-h-[600px]`}>
+            {/* Editor Panel */}
+            <div className="border-r border-gray-200">
+              <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-800">Diagram Code</h2>
+                <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  editorState.isValid 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-red-100 text-red-800'
+                }`}>
+                  {editorState.isValid ? '✓ Valid' : '⚠ Errors'}
+                </div>
+              </div>
+              <div className="h-[500px]">
+                <Editor
+                  height="100%"
+                  language={DIAGRAM_LANGUAGE}
+                  value={editorState.content}
+                  onChange={handleContentChange}
+                  options={MONACO_OPTIONS}
+                />
+              </div>
+            </div>
+            
+            {/* Preview Panel */}
+            <div className="bg-white">
+              <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-800">Live Preview</h2>
+                <div className="text-sm text-gray-600">
+                  {editorState.parsedDiagram.nodes.length} nodes, {editorState.parsedDiagram.connections.length} connections
+                </div>
+              </div>
+              <div className="h-[500px] p-4">
+                <DiagramPreview 
+                  content={editorState.content}
+                  onContentChange={(newContent) => {
+                    setEditorState(prev => ({
+                      ...prev,
+                      content: newContent
+                    }));
+                  }}
+                />
+              </div>
+            </div>
           </div>
         </div>
-        <Editor
-          height="calc(100% - 60px)"
-          language={DIAGRAM_LANGUAGE}
-          value={editorState.content}
-          onChange={handleContentChange}
-          options={MONACO_OPTIONS}
-        />
-      </div>
-      
-      <div className="preview-panel" style={previewStyle}>
-        <div className="preview-header">
-          <h2>Preview</h2>
-          <div className="stats">
-            {editorState.parsedDiagram.nodes.length} nodes, {editorState.parsedDiagram.connections.length} connections
-          </div>
-        </div>
-        <DiagramPreview 
-          diagram={editorState.parsedDiagram}
-          className="preview-content"
-        />
       </div>
     </div>
   );

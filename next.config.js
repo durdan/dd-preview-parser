@@ -11,8 +11,18 @@ const nextConfig = {
     config.externals.push({
       canvas: 'canvas'
     });
+    
+    // Handle mermaid module resolution
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      path: false,
+      crypto: false,
+    };
+    
     return config;
-  }
+  },
+  transpilePackages: ['mermaid']
 };
 
 module.exports = nextConfig;

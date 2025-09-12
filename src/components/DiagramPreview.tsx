@@ -3,19 +3,56 @@ import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { DiagramParser } from '../services/DiagramParser';
 import { DiagramRenderer } from '../services/DiagramRenderer';
 import { ErrorDisplay } from './ErrorDisplay';
+import { ParsedDiagram } from '../types/diagram';
+
+// Helper function to detect if content is a Mermaid diagram
+const isMermaidDiagram = (content: string): boolean => {
+  const mermaidKeywords = [
+    'graph', 'flowchart', 'sequenceDiagram', 'classDiagram', 
+    'stateDiagram', 'erDiagram', 'journey', 'gantt', 'pie', 'gitgraph'
+  ];
+  
+  const firstLine = content.split('\n')[0]?.trim() || '';
+  return mermaidKeywords.some(keyword => firstLine.toLowerCase().includes(keyword.toLowerCase()));
+};
+
+// Helper function to convert parsed diagram to Mermaid code
+const generateMermaidCode = (parsedDiagram: ParsedDiagram): string => {
+  if (parsedDiagram.nodes.length === 0) {
+    return 'graph TD\n    A[No diagram content]';
+  }
+
+  let mermaidCode = 'graph TD\n';
+  
+  // Add nodes
+  parsedDiagram.nodes.forEach(node => {
+    const shape = node.type === 'start' ? '((()))' : 
+                  node.type === 'end' ? '((()))' :
+                  node.type === 'decision' ? '{}' : '[]';
+    mermaidCode += `    ${node.id}${shape}[${node.label}]\n`;
+  });
+  
+  // Add connections
+  parsedDiagram.connections.forEach(conn => {
+    const label = conn.label ? `|${conn.label}|` : '';
+    mermaidCode += `    ${conn.from} -->${label} ${conn.to}\n`;
+  });
+  
+  return mermaidCode;
+};
 
 interface DiagramPreviewProps {
   content: string;
   onContentChange: (content: string) => void;
 }
 
-export const DiagramPreview: React.FC<DiagramPreviewProps> = ({
+const DiagramPreview: React.FC<DiagramPreviewProps> = ({
   content,
   onContentChange
 }) => {
   const [error, setError] = useState<string | null>(null);
   const [isRendering, setIsRendering] = useState(false);
-  const debouncedContent = useDebouncedValue(content, 300);
+  const debouncedContent = useDebouncedValue(content || '', 300);
 
   useEffect(() => {
     const renderDiagram = async () => {
@@ -23,14 +60,23 @@ export const DiagramPreview: React.FC<DiagramPreviewProps> = ({
       setError(null);
 
       try {
-        const parseResult = DiagramParser.parse(debouncedContent);
-        
-        if (!parseResult.isValid) {
-          setError(parseResult.error || 'Invalid diagram');
-          return;
-        }
+        // Check if it's a Mermaid diagram
+        if (isMermaidDiagram(debouncedContent)) {
+          // Render directly as Mermaid
+          await DiagramRenderer.render(debouncedContent, 'diagram-container');
+        } else {
+          // Parse as custom diagram format
+          const parseResult = DiagramParser.parse(debouncedContent);
+          
+          if (parseResult.errors.length > 0) {
+            setError(parseResult.errors.join(', '));
+            return;
+          }
 
-        await DiagramRenderer.render(parseResult.parsedContent || '', 'diagram-container');
+          // Convert to Mermaid code
+          const mermaidCode = generateMermaidCode(parseResult);
+          await DiagramRenderer.render(mermaidCode, 'diagram-container');
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Rendering failed');
       } finally {
@@ -42,39 +88,23 @@ export const DiagramPreview: React.FC<DiagramPreviewProps> = ({
   }, [debouncedContent]);
 
   return (
-    <div className="diagram-preview" style={{ display: 'flex', height: '600px' }}>
-      <div style={{ flex: 1, marginRight: '16px' }}>
-        <h3>Diagram Code</h3>
-        <textarea
-          value={content}
-          onChange={(e) => onContentChange(e.target.value)}
-          placeholder="Enter your diagram code here..."
-          style={{
-            width: '100%',
-            height: '500px',
-            fontFamily: 'monospace',
-            fontSize: '14px',
-            padding: '12px',
-            border: '1px solid #ccc',
-            borderRadius: '4px'
-          }}
-        />
-      </div>
-      
-      <div style={{ flex: 1 }}>
-        <h3>Preview {isRendering && <span style={{ color: '#666' }}>(updating...)</span>}</h3>
-        <ErrorDisplay error={error} />
-        <div
-          id="diagram-container"
-          style={{
-            border: '1px solid #ccc',
-            borderRadius: '4px',
-            padding: '16px',
-            minHeight: '400px',
-            backgroundColor: '#fafafa'
-          }}
-        />
-      </div>
+    <div className="h-full">
+      <ErrorDisplay error={error} />
+      {isRendering && (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+            <p className="text-gray-600">Rendering diagram...</p>
+          </div>
+        </div>
+      )}
+      <div
+        id="diagram-container"
+        className="w-full h-full bg-white border border-gray-200 rounded-lg p-4 overflow-auto"
+        style={{ minHeight: '400px' }}
+      />
     </div>
   );
 };
+
+export default DiagramPreview;
