@@ -1,6 +1,16 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import dynamic from 'next/dynamic';
+import DiagramPreview from './DiagramPreview';
+
+// Dynamically import Monaco Editor to avoid SSR issues
+const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-full">
+      <div className="text-gray-600">Loading editor...</div>
+    </div>
+  )
+});
 
 export type DiagramType = 'mermaid' | 'plantuml' | 'unknown';
 
@@ -27,27 +37,32 @@ export const isPlantUMLDiagram = (content: string): boolean => {
   // Check for PlantUML-specific keywords
   const plantUMLKeywords = [
     // UML diagram types
-    '@startuml', '@enduml', '@startmindmap', '@endmindmap',
-    '@startsalt', '@endsalt', '@startgantt', '@endgantt',
-    // Class diagram keywords
-    'class\\s+\\w+', 'interface\\s+\\w+', 'abstract\\s+class',
-    'enum\\s+\\w+', 'package\\s+\\w+',
-    // Relationship operators
-    '\\|\\|--\\|\\|', '\\}\\|--\\|\\{', '\\|\\>--\\|\\>',
-    '-->', '<--', '\\.\\.>', '<\\.\\.', '==>', '<==',
-    // Activity diagram
-    'start', 'stop', 'end', ':.*?;', 'if\\s*\\(.*?\\)',
-    // Sequence diagram
-    'participant\\s+\\w+', 'actor\\s+\\w+', 'boundary\\s+\\w+',
-    'control\\s+\\w+', 'entity\\s+\\w+', 'database\\s+\\w+',
-    // Component diagram
-    'component\\s+\\w+', 'node\\s+\\w+',
-    // State diagram
-    'state\\s+\\w+', '\\[\\*\\]'
+    'class', 'object', 'component', 'deployment', 'package', 'node', 'folder', 'frame', 'cloud', 'database',
+    'actor', 'use case', 'usecase', 'rectangle', 'interface', 'enum', 'abstract', 'annotation',
+    // Activity diagrams
+    'activity', 'partition', 'fork', 'end fork', 'detach', 'note', 'floating note',
+    // Sequence diagrams
+    'participant', 'actor', 'boundary', 'control', 'entity', 'collections', 'queue', 'alt', 'else', 'end', 'opt', 'loop', 'par', 'and', 'break', 'critical', 'group', 'activate', 'deactivate', 'destroy', 'create',
+    // State diagrams
+    'state', '[*]', '-->', '--', 'note right', 'note left', 'note top', 'note bottom',
+    // Timing diagrams
+    'clock', 'binary', 'concise', 'robust',
+    // Network diagrams
+    'network', 'nwdiag',
+    // Archimate
+    'archimate',
+    // Salt
+    'salt',
+    // Mindmap
+    'mindmap',
+    // Gantt
+    'gantt',
+    // Git
+    'gitgraph'
   ];
 
-  const keywordPattern = new RegExp(plantUMLKeywords.join('|'), 'i');
-  return keywordPattern.test(trimmedContent);
+  const contentLower = trimmedContent.toLowerCase();
+  return plantUMLKeywords.some(keyword => contentLower.includes(keyword));
 };
 
 // Mermaid syntax detection
@@ -57,161 +72,116 @@ export const isMermaidDiagram = (content: string): boolean => {
   }
 
   const trimmedContent = content.trim();
-  
-  // Mermaid diagram type keywords
   const mermaidKeywords = [
-    'graph\\s+(TD|TB|BT|RL|LR)',
-    'flowchart\\s+(TD|TB|BT|RL|LR)',
-    'sequenceDiagram',
-    'classDiagram',
-    'stateDiagram',
-    'erDiagram',
-    'journey',
-    'gantt',
-    'pie\\s+title',
-    'gitgraph',
-    'mindmap',
-    'timeline'
+    'graph', 'flowchart', 'sequenceDiagram', 'classDiagram', 
+    'stateDiagram', 'erDiagram', 'journey', 'gantt', 'pie', 'gitgraph'
   ];
-
-  const keywordPattern = new RegExp(`^\\s*(${mermaidKeywords.join('|')})`, 'im');
-  return keywordPattern.test(trimmedContent);
+  
+  const firstLine = trimmedContent.split('\n')[0]?.trim() || '';
+  return mermaidKeywords.some(keyword => firstLine.toLowerCase().includes(keyword.toLowerCase()));
 };
 
-// Determine diagram type
-export const detectDiagramType = (content: string): DiagramType => {
-  if (!content || content.trim().length === 0) {
-    return 'unknown';
-  }
-
-  // PlantUML has priority if it has explicit tags
-  if (content.includes('@startuml') || content.includes('@enduml')) {
-    return 'plantuml';
-  }
-
-  // Check Mermaid first (more specific patterns)
-  if (isMermaidDiagram(content)) {
-    return 'mermaid';
-  }
-
-  // Then check PlantUML
-  if (isPlantUMLDiagram(content)) {
-    return 'plantuml';
-  }
-
-  return 'unknown';
-};
-
-// Custom PlantUML syntax highlighting
-const PlantUMLHighlighter: React.FC<{ children: string }> = ({ children }) => {
-  const highlightedCode = useMemo(() => {
-    return children
-      .replace(/(@startuml|@enduml|@startmindmap|@endmindmap)/g, '<span style="color: #569cd6;">$1</span>')
-      .replace(/(class|interface|abstract|enum|package|participant|actor|component|node|state)\s+(\w+)/g, 
-               '<span style="color: #4ec9b0;">$1</span> <span style="color: #dcdcaa;">$2</span>')
-      .replace(/(-->|<--|\.\.>|<\.\.|==>|<==|\|\|--\|\||\}\|--\|\{)/g, '<span style="color: #c586c0;">$1</span>')
-      .replace(/(:.*?;)/g, '<span style="color: #ce9178;">$1</span>')
-      .replace(/(if\s*\(.*?\)|start|stop|end)/g, '<span style="color: #569cd6;">$1</span>');
-  }, [children]);
-
-  return (
-    <pre style={{ 
-      backgroundColor: '#1e1e1e', 
-      color: '#d4d4d4', 
-      padding: '1rem',
-      borderRadius: '4px',
-      overflow: 'auto'
-    }}>
-      <code dangerouslySetInnerHTML={{ __html: highlightedCode }} />
-    </pre>
-  );
-};
-
-export const DiagramEditor: React.FC<DiagramEditorProps> = ({
-  initialContent = '',
+const DiagramEditor: React.FC<DiagramEditorProps> = ({
+  initialContent = `sequenceDiagram
+    Alice->>+John: Hello John, how are you?
+    Alice->>+John: John, can you hear me?
+    John-->>-Alice: Hi Alice, I can hear you!
+    John-->>-Alice: I feel great!`,
   onContentChange,
   onDiagramTypeChange
 }) => {
   const [content, setContent] = useState(initialContent);
-  const [diagramType, setDiagramType] = useState<DiagramType>(() => 
-    detectDiagramType(initialContent)
-  );
+  const [diagramType, setDiagramType] = useState<DiagramType>('mermaid');
+  const editorRef = useRef<any>(null);
 
+  // Detect diagram type based on content
+  const detectDiagramType = useCallback((newContent: string): DiagramType => {
+    if (isPlantUMLDiagram(newContent)) {
+      return 'plantuml';
+    } else if (isMermaidDiagram(newContent)) {
+      return 'mermaid';
+    }
+    return 'unknown';
+  }, []);
+
+  // Handle content changes
   const handleContentChange = useCallback((newContent: string) => {
     setContent(newContent);
-    
     const detectedType = detectDiagramType(newContent);
-    
-    if (detectedType !== diagramType) {
-      setDiagramType(detectedType);
-      onDiagramTypeChange?.(detectedType);
-    }
+    setDiagramType(detectedType);
     
     onContentChange?.(newContent, detectedType);
-  }, [diagramType, onContentChange, onDiagramTypeChange]);
+    onDiagramTypeChange?.(detectedType);
+  }, [detectDiagramType, onContentChange, onDiagramTypeChange]);
 
-  const renderSyntaxHighlighter = () => {
-    if (diagramType === 'plantuml') {
-      return <PlantUMLHighlighter>{content}</PlantUMLHighlighter>;
-    } else if (diagramType === 'mermaid') {
-      return (
-        <SyntaxHighlighter
-          language="mermaid"
-          style={tomorrow}
-          customStyle={{
-            margin: 0,
-            borderRadius: '4px'
-          }}
-        >
-          {content}
-        </SyntaxHighlighter>
-      );
-    } else {
-      return (
-        <SyntaxHighlighter
-          language="text"
-          style={tomorrow}
-          customStyle={{
-            margin: 0,
-            borderRadius: '4px'
-          }}
-        >
-          {content}
-        </SyntaxHighlighter>
-      );
+  // Get Monaco Editor language based on diagram type
+  const getEditorLanguage = useCallback(() => {
+    switch (diagramType) {
+      case 'mermaid':
+        return 'mermaid';
+      case 'plantuml':
+        return 'plantuml';
+      default:
+        return 'plaintext';
     }
+  }, [diagramType]);
+
+  // Get Monaco Editor theme
+  const getEditorTheme = useCallback(() => {
+    return 'vs-dark';
+  }, []);
+
+  // Monaco Editor options
+  const editorOptions = {
+    theme: getEditorTheme(),
+    fontSize: 14,
+    lineNumbers: 'on' as const,
+    minimap: { enabled: false },
+    scrollBeyondLastLine: false,
+    automaticLayout: true,
+    wordWrap: 'on' as const,
+    tabSize: 2,
+    suggestOnTriggerCharacters: true,
+    quickSuggestions: true,
+    acceptSuggestionOnEnter: 'on' as const,
   };
 
   return (
-    <div className="diagram-editor">
-      <div className="editor-header">
-        <span className="diagram-type-indicator">
-          Type: <strong>{diagramType.toUpperCase()}</strong>
-        </span>
+    <div className="diagram-editor bg-white rounded-lg shadow-lg overflow-hidden">
+      <div className="editor-header bg-gray-50 px-4 py-3 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-gray-700">
+            Diagram Editor
+          </span>
+          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+            Type: <strong>{diagramType.toUpperCase()}</strong>
+          </span>
+        </div>
       </div>
       
-      <div className="editor-container" style={{ display: 'flex', gap: '1rem' }}>
-        <div className="editor-input" style={{ flex: 1 }}>
-          <textarea
+      <div className="editor-container" style={{ display: 'flex', height: '600px' }}>
+        {/* Left Panel - Monaco Editor */}
+        <div className="editor-input" style={{ flex: 1, borderRight: '1px solid #e5e7eb' }}>
+          <MonacoEditor
+            height="100%"
+            language={getEditorLanguage()}
             value={content}
-            onChange={(e) => handleContentChange(e.target.value)}
-            placeholder="Enter your diagram code here..."
-            style={{
-              width: '100%',
-              height: '400px',
-              fontFamily: 'monospace',
-              fontSize: '14px',
-              padding: '1rem',
-              border: '1px solid #ccc',
-              borderRadius: '4px',
-              resize: 'vertical'
+            onChange={handleContentChange}
+            options={editorOptions}
+            onMount={(editor) => {
+              editorRef.current = editor;
             }}
           />
         </div>
         
+        {/* Right Panel - Diagram Preview */}
         <div className="editor-preview" style={{ flex: 1 }}>
-          <h4>Syntax Highlighting Preview:</h4>
-          {renderSyntaxHighlighter()}
+          <div className="h-full">
+            <DiagramPreview 
+              content={content}
+              onContentChange={handleContentChange}
+            />
+          </div>
         </div>
       </div>
     </div>
