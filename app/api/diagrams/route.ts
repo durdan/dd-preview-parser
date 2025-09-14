@@ -1,78 +1,66 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '../../../lib/auth';
-import connectDB from '../../../lib/mongodb';
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import { z } from 'zod'
 
-// For now, we'll use in-memory storage since MongoDB models aren't set up yet
-let diagrams: any[] = [];
-let nextId = 1;
+const DiagramSchema = z.object({
+  title: z.string().min(1).max(100),
+  content: z.string(),
+})
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(authOptions)
     
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
-    const isPublic = searchParams.get('public') === 'true';
-    
-    let userDiagrams = diagrams;
-    
-    if (session?.user?.id) {
-      userDiagrams = diagrams.filter(d => d.ownerId === session.user.id);
-    } else if (isPublic) {
-      userDiagrams = diagrams.filter(d => d.isPublic);
-    } else {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit;
-    const paginatedDiagrams = userDiagrams.slice(startIndex, endIndex);
-    
-    return NextResponse.json({ 
-      diagrams: paginatedDiagrams,
-      total: userDiagrams.length,
-      page,
-      limit
-    });
+
+    const diagrams = await prisma.diagram.findMany({
+      where: { userId: session.user.id },
+      select: {
+        id: true,
+        title: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy: { updatedAt: 'desc' },
+    })
+
+    return NextResponse.json(diagrams)
   } catch (error) {
-    console.error('Get diagrams error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Error fetching diagrams:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(authOptions)
     
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    
-    const { title, description, content, type, isPublic } = await request.json();
-    
-    if (!title || !content) {
-      return NextResponse.json({ error: 'Title and content are required' }, { status: 400 });
-    }
-    
-    const diagram = {
-      id: nextId++,
-      title,
-      description: description || '',
-      content,
-      type: type || 'mermaid',
-      isPublic: isPublic || false,
-      ownerId: session.user.id,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    
-    diagrams.push(diagram);
-    
-    return NextResponse.json({ diagram }, { status: 201 });
+
+    const body = await request.json()
+    const validatedData = DiagramSchema.parse(body)
+
+    const diagram = await prisma.diagram.create({
+      data: {
+        title: validatedData.title,
+        content: validatedData.content,
+        userId: session.user.id,
+      },
+    })
+
+    return NextResponse.json(diagram, { status: 201 })
   } catch (error) {
-    console.error('Create diagram error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: 'Invalid input', details: error.errors }, { status: 400 })
+    }
+    
+    console.error('Error creating diagram:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

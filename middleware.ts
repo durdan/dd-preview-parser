@@ -1,4 +1,4 @@
-import { withAuth } from 'next-auth/middleware';
+import { withAuth } from 'next-auth/middleware'
 
 export default withAuth(
   function middleware(req) {
@@ -9,8 +9,11 @@ export default withAuth(
       authorized: ({ token }) => !!token,
     },
   }
-);
+)
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/profile/:path*', '/admin/:path*'],
-};
+  matcher: [
+    '/editor/:path*',
+    '/api/diagrams/:path*',
+  ]
+}
