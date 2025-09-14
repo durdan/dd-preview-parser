@@ -3,54 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Client-Side Export Demo</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .export-container { margin: 20px 0; }
-        .export-buttons { margin: 10px 0; }
-        .export-buttons button { margin-right: 10px; padding: 8px 16px; }
-        .content-to-export { 
-            border: 2px solid #ccc; 
-            padding: 20px; 
-            margin: 20px 0;
-            background: white;
-        }
-        .error { color: red; margin: 10px 0; }
-        .success { color: green; margin: 10px 0; }
-    </style>
+    <title>Diagram Template System</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>Client-Side Export Demo</h1>
-    
-    <div class="export-container">
-        <div class="export-buttons">
-            <button id="export-png">Export as PNG</button>
-            <button id="export-pdf">Export as PDF</button>
+    <div class="app">
+        <header class="header">
+            <h1>Diagram Templates</h1>
+            <button id="create-template-btn" class="btn btn-primary">Create Template</button>
+        </header>
+
+        <main class="main">
+            <aside class="sidebar">
+                <div class="category-filter">
+                    <h3>Categories</h3>
+                    <div id="category-list" class="category-list"></div>
+                </div>
+            </aside>
+
+            <section class="content">
+                <div id="template-grid" class="template-grid"></div>
+            </section>
+        </main>
+
+        <!-- Template Builder Modal -->
+        <div id="template-builder" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="builder-title">Create Template</h2>
+                    <button class="close-btn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="template-form" class="template-form">
+                        <div class="form-group">
+                            <label for="template-name">Template Name</label>
+                            <input type="text" id="template-name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="template-category">Category</label>
+                            <select id="template-category" required>
+                                <option value="">Select Category</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="template-description">Description</label>
+                            <textarea id="template-description" rows="3"></textarea>
+                        </div>
+                    </form>
+                    
+                    <div class="builder-workspace">
+                        <div class="element-palette">
+                            <h4>Elements</h4>
+                            <div class="palette-items">
+                                <button class="palette-item" data-element="rectangle">Rectangle</button>
+                                <button class="palette-item" data-element="circle">Circle</button>
+                                <button class="palette-item" data-element="diamond">Diamond</button>
+                                <button class="palette-item" data-element="arrow">Arrow</button>
+                            </div>
+                        </div>
+                        <div class="canvas-container">
+                            <svg id="template-canvas" class="template-canvas" width="600" height="400">
+                                <defs>
+                                    <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+                                            refX="9" refY="3.5" orient="auto">
+                                        <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
+                                    </marker>
+                                </defs>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancel-btn">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="save-template-btn">Save Template</button>
+                </div>
+            </div>
         </div>
-        <div id="status"></div>
     </div>
 
-    <div id="content" class="content-to-export">
-        <h2>Sample Content</h2>
-        <p>This content will be exported as PNG or PDF.</p>
-        <div style="background: #f0f0f0; padding: 10px; margin: 10px 0;">
-            <h3>Features:</h3>
-            <ul>
-                <li>Client-side PNG export using html2canvas</li>
-                <li>Client-side PDF export using jsPDF</li>
-                <li>No server required</li>
-                <li>Automatic download trigger</li>
-            </ul>
-        </div>
-    </div>
-
-    <script src="js/blob-downloader.js"></script>
-    <script src="js/canvas-renderer.js"></script>
-    <script src="js/pdf-generator.js"></script>
-    <script src="js/export-manager.js"></script>
-    <script src="js/export-ui.js"></script>
+    <script src="js/template-model.js"></script>
+    <script src="js/template-store.js"></script>
+    <script src="js/template-manager.js"></script>
+    <script src="js/template-builder.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>
