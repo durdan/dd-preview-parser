@@ -16,6 +16,40 @@ const isMermaidDiagram = (content: string): boolean => {
   return mermaidKeywords.some(keyword => firstLine.toLowerCase().includes(keyword.toLowerCase()));
 };
 
+// Helper function to detect if content is a PlantUML diagram
+const isPlantUMLDiagram = (content: string): boolean => {
+  if (!content || typeof content !== 'string') {
+    return false;
+  }
+
+  const trimmedContent = content.trim();
+  
+  // Check for PlantUML start/end tags
+  const hasStartEndTags = /@startuml|@enduml/i.test(trimmedContent);
+  if (hasStartEndTags) {
+    return true;
+  }
+
+  // Check for PlantUML-specific keywords
+  const plantUMLKeywords = [
+    'class', 'object', 'component', 'deployment', 'package', 'node', 'folder', 'frame', 'cloud', 'database',
+    'actor', 'use case', 'usecase', 'rectangle', 'interface', 'enum', 'abstract', 'annotation',
+    'activity', 'partition', 'fork', 'end fork', 'detach', 'note', 'floating note',
+    'participant', 'boundary', 'control', 'entity', 'collections', 'queue', 'alt', 'else', 'end', 'opt', 'loop', 'par', 'and', 'break', 'critical', 'group', 'activate', 'deactivate', 'destroy', 'create',
+    'state', '[*]', '-->', '--', 'note right', 'note left', 'note top', 'note bottom',
+    'clock', 'binary', 'concise', 'robust',
+    'network', 'nwdiag',
+    'archimate',
+    'salt',
+    'mindmap',
+    'gantt',
+    'gitgraph'
+  ];
+
+  const contentLower = trimmedContent.toLowerCase();
+  return plantUMLKeywords.some(keyword => contentLower.includes(keyword));
+};
+
 // Helper function to convert parsed diagram to Mermaid code
 const generateMermaidCode = (parsedDiagram: ParsedDiagram): string => {
   if (parsedDiagram.nodes.length === 0) {
@@ -41,6 +75,53 @@ const generateMermaidCode = (parsedDiagram: ParsedDiagram): string => {
   return mermaidCode;
 };
 
+// Helper function to render PlantUML diagrams
+const renderPlantUMLDiagram = async (content: string): Promise<void> => {
+  try {
+    const response = await fetch('/api/plantuml/render', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        code: content,
+        format: 'svg'
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`PlantUML rendering failed: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    
+    if (result.error) {
+      throw new Error(result.error);
+    }
+
+    // Display the rendered SVG
+    const element = document.getElementById('diagram-container');
+    if (element && result.svg) {
+      element.innerHTML = result.svg;
+    } else if (element && result.url) {
+      // If we get a URL instead of SVG, create an img element
+      element.innerHTML = `<img src="${result.url}" alt="PlantUML Diagram" style="max-width: 100%; height: auto;" />`;
+    } else {
+      throw new Error('No rendered diagram received');
+    }
+  } catch (error) {
+    console.error('PlantUML rendering error:', error);
+    const element = document.getElementById('diagram-container');
+    if (element) {
+      element.innerHTML = `<div class="error" style="color: red; padding: 10px; border: 1px solid red; border-radius: 4px;">
+        <strong>PlantUML Rendering Error:</strong><br/>
+        ${error instanceof Error ? error.message : 'Unknown error'}
+      </div>`;
+    }
+    throw error;
+  }
+};
+
 interface DiagramPreviewProps {
   content: string;
   onContentChange: (content: string) => void;
@@ -64,6 +145,9 @@ const DiagramPreview: React.FC<DiagramPreviewProps> = ({
         if (isMermaidDiagram(debouncedContent)) {
           // Render directly as Mermaid
           await DiagramRenderer.render(debouncedContent, 'diagram-container');
+        } else if (isPlantUMLDiagram(debouncedContent)) {
+          // Render PlantUML diagram
+          await renderPlantUMLDiagram(debouncedContent);
         } else {
           // Parse as custom diagram format
           const parseResult = DiagramParser.parse(debouncedContent);

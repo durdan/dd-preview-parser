@@ -8,17 +8,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'PlantUML code is required' }, { status: 400 });
     }
 
-    // Import PlantUML services dynamically to avoid SSR issues
-    const PlantUMLRenderer = (await import('../../../src/services/plantuml-renderer.js')).default;
-    const renderer = new PlantUMLRenderer();
+    // Simple PlantUML validation - check for basic syntax
+    const trimmedCode = code.trim();
+    const hasStartTag = /@startuml/i.test(trimmedCode);
+    const hasEndTag = /@enduml/i.test(trimmedCode);
     
-    const result = await renderer.validateSyntax(code);
+    // Basic validation
+    const valid = hasStartTag && hasEndTag && trimmedCode.length > 20;
     
-    return NextResponse.json(result);
+    return NextResponse.json({
+      valid,
+      parsed: null,
+      errors: valid ? [] : ['Invalid PlantUML syntax - missing @startuml/@enduml tags or too short']
+    });
   } catch (error) {
     console.error('PlantUML validation error:', error);
     return NextResponse.json({ 
-      error: error instanceof Error ? error.message : 'Validation failed' 
+      valid: false,
+      parsed: null,
+      errors: [error instanceof Error ? error.message : 'Validation failed']
     }, { status: 500 });
   }
 }

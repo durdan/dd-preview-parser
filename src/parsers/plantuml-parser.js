@@ -99,4 +99,4 @@ class PlantUMLParser {
   }
 }
 
-module.exports = PlantUMLParser;
+export default PlantUMLParser;

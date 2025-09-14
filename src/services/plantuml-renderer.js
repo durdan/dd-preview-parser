@@ -1,6 +1,6 @@
-const PlantUMLParser = require('../parsers/plantuml-parser');
-const PlantUMLEncoderService = require('./plantuml-encoder');
-const PlantUMLServerClient = require('./plantuml-server-client');
+import PlantUMLParser from '../parsers/plantuml-parser.js';
+import PlantUMLEncoderService from './plantuml-encoder.js';
+import PlantUMLServerClient from './plantuml-server-client.js';
 
 class PlantUMLRenderer {
   constructor(serverUrl) {
@@ -54,4 +54,4 @@ class PlantUMLRenderer {
   }
 }
 
-module.exports = PlantUMLRenderer;
+export default PlantUMLRenderer;

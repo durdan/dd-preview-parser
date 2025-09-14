@@ -1,4 +1,4 @@
-const plantumlEncoder = require('plantuml-encoder');
+import plantumlEncoder from 'plantuml-encoder';
 
 class PlantUMLEncoderService {
   encode(plantUMLCode) {
@@ -31,4 +31,4 @@ class PlantUMLEncoderService {
   }
 }
 
-module.exports = PlantUMLEncoderService;
+export default PlantUMLEncoderService;

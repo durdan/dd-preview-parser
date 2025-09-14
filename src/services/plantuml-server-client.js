@@ -1,4 +1,4 @@
-const axios = require('axios');
+import axios from 'axios';
 
 class PlantUMLServerClient {
   constructor(serverUrl = 'http://www.plantuml.com/plantuml') {
@@ -61,4 +61,4 @@ class PlantUMLServerClient {
   }
 }
 
-module.exports = PlantUMLServerClient;
+export default PlantUMLServerClient;
