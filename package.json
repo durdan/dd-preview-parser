@@ -12,11 +12,15 @@
   },
   "dependencies": {
     "@monaco-editor/react": "^4.6.0",
+    "@supabase/supabase-js": "^2.57.4",
     "@types/react-syntax-highlighter": "^15.5.13",
     "autoprefixer": "^10.4.0",
     "axios": "^1.6.0",
     "bcryptjs": "^2.4.3",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
     "jsonwebtoken": "^9.0.2",
+    "lucide-react": "^0.544.0",
     "mermaid": "^11.11.0",
     "monaco-editor": "^0.44.0",
     "next": "^14.0.0",
@@ -26,8 +30,9 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-syntax-highlighter": "^15.6.6",
-    "tailwindcss": "^3.3.0",
-    "@supabase/supabase-js": "^2.38.0"
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.3.1",
+    "tailwindcss": "^3.3.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.0.0",
@@ -36,6 +41,7 @@
     "@types/jsonwebtoken": "^9.0.0",
     "@types/mermaid": "^9.1.0",
     "@types/node": "^20.0.0",
+    "@types/plantuml-encoder": "^1.4.2",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "eslint": "^8.0.0",

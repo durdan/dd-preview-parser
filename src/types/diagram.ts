@@ -21,3 +21,17 @@ export interface EditorState {
   parsedDiagram: ParsedDiagram;
   isValid: boolean;
 }
+
+export interface Diagram {
+  id: string;
+  title: string;
+  description: string;
+  content: string;
+  type: string;
+  isPublic: boolean;
+  ownerId: string;
+  thumbnail?: string;
+  participantCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}

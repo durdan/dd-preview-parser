@@ -3,7 +3,7 @@
 import { memo } from 'react';
 import DiagramCard from './DiagramCard';
 import DiagramCardSkeleton from './DiagramCardSkeleton';
-import { Diagram } from '@/types/diagram';
+import { Diagram } from '@/src/types/diagram';
 
 interface DiagramGridProps {
   diagrams: Diagram[];

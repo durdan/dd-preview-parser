@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { DiagramParser } from '../services/DiagramParser';
@@ -152,14 +154,17 @@ const DiagramPreview: React.FC<DiagramPreviewProps> = ({
           // Parse as custom diagram format
           const parseResult = DiagramParser.parse(debouncedContent);
           
-          if (parseResult.errors.length > 0) {
-            setError(parseResult.errors.join(', '));
+          if (!parseResult.isValid && parseResult.error) {
+            setError(parseResult.error);
             return;
           }
 
-          // Convert to Mermaid code
-          const mermaidCode = generateMermaidCode(parseResult);
-          await DiagramRenderer.render(mermaidCode, 'diagram-container');
+          // Use the parsed content directly if it's valid
+          if (parseResult.parsedContent) {
+            await DiagramRenderer.render(parseResult.parsedContent, 'diagram-container');
+          } else {
+            await DiagramRenderer.render('graph TD\n    A[No diagram content]', 'diagram-container');
+          }
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Rendering failed');

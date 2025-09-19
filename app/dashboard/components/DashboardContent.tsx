@@ -7,12 +7,8 @@ import DiagramGrid from './DiagramGrid';
 import { useDiagrams } from '@/hooks/useDiagrams';
 import { Button } from '@/components/ui/button';
 
-interface DashboardContentProps {
-  userId: string;
-}
-
-export default function DashboardContent({ userId }: DashboardContentProps) {
-  const { diagrams, loading, error, deleteDiagram } = useDiagrams(userId);
+export default function DashboardContent() {
+  const { diagrams, loading, error, deleteDiagram } = useDiagrams();
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredDiagrams = diagrams.filter(diagram =>

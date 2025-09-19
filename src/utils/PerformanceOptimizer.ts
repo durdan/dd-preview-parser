@@ -50,6 +50,6 @@ export function useOptimizedCallback<T extends (...args: any[]) => any>(
       (...args: Parameters<T>) => callbackRef.current(...args),
       debounceMs,
       `callback-${Math.random()}`
-    );
+    ) as T;
   }, deps);
 }

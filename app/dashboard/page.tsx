@@ -23,7 +23,7 @@ export default async function DashboardPage() {
         </div>
         
         <Suspense fallback={<DashboardSkeleton />}>
-          <DashboardContent userId={session.user.id} />
+          <DashboardContent />
         </Suspense>
       </div>
     </div>

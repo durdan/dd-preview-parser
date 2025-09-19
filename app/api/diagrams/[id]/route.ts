@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../../../lib/auth';
-
-// For now, we'll use in-memory storage since MongoDB models aren't set up yet
-let diagrams: any[] = [];
+import { authOptions } from '@/lib/auth';
+import { storage } from '@/lib/storage';
 
 export async function GET(
   request: NextRequest,
@@ -11,9 +9,9 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    const diagramId = parseInt(params.id);
+    const diagramId = params.id;
     
-    const diagram = diagrams.find(d => d.id === diagramId);
+    const diagram = storage.findDiagramById(diagramId);
     
     if (!diagram) {
       return NextResponse.json({ error: 'Diagram not found' }, { status: 404 });
@@ -42,34 +40,31 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    const diagramId = parseInt(params.id);
-    const diagramIndex = diagrams.findIndex(d => d.id === diagramId);
+    const diagramId = params.id;
+    const diagram = storage.findDiagramById(diagramId);
     
-    if (diagramIndex === -1) {
+    if (!diagram) {
       return NextResponse.json({ error: 'Diagram not found' }, { status: 404 });
     }
-    
-    const diagram = diagrams[diagramIndex];
     
     // Check if user owns this diagram
     if (diagram.ownerId !== session.user.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
     
-    const { title, description, content, type, isPublic } = await request.json();
+    const { title, description, content, type, isPublic, thumbnail } = await request.json();
     
     // Update diagram
-    diagrams[diagramIndex] = {
-      ...diagram,
+    const updatedDiagram = storage.updateDiagram(diagramId, {
       ...(title && { title }),
       ...(description !== undefined && { description }),
       ...(content && { content }),
       ...(type && { type }),
       ...(isPublic !== undefined && { isPublic }),
-      updatedAt: new Date().toISOString()
-    };
+      ...(thumbnail && { thumbnail })
+    });
     
-    return NextResponse.json({ diagram: diagrams[diagramIndex] });
+    return NextResponse.json({ diagram: updatedDiagram });
   } catch (error) {
     console.error('Update diagram error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -87,21 +82,19 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    const diagramId = parseInt(params.id);
-    const diagramIndex = diagrams.findIndex(d => d.id === diagramId);
+    const diagramId = params.id;
+    const diagram = storage.findDiagramById(diagramId);
     
-    if (diagramIndex === -1) {
+    if (!diagram) {
       return NextResponse.json({ error: 'Diagram not found' }, { status: 404 });
     }
-    
-    const diagram = diagrams[diagramIndex];
     
     // Check if user owns this diagram
     if (diagram.ownerId !== session.user.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
     
-    diagrams.splice(diagramIndex, 1);
+    const deleted = storage.deleteDiagram(diagramId);
     
     return NextResponse.json({ message: 'Diagram deleted successfully' });
   } catch (error) {

@@ -27,6 +27,28 @@ export default function Home() {
             Support for Mermaid diagrams, flowcharts, class diagrams, and more.
           </p>
           
+          {/* Navigation Links */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
+            <a 
+              href="/editor" 
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              Open Editor
+            </a>
+            <a 
+              href="/dashboard" 
+              className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors font-medium"
+            >
+              My Diagrams
+            </a>
+            <a 
+              href="/auth/login" 
+              className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+            >
+              Sign In
+            </a>
+          </div>
+          
           {/* Feature Cards - Hidden on mobile to prioritize editor */}
           <div className="hidden md:grid md:grid-cols-3 gap-6 mb-8">
             <div className="bg-white p-6 rounded-lg shadow-md">

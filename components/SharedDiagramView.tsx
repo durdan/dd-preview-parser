@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { DiagramRenderer } from '@/components/DiagramRenderer';
+import { DiagramRenderer } from '@/src/services/DiagramRenderer';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Calendar, User } from 'lucide-react';
 import { SharedDiagram } from '@/types/sharing';
@@ -42,6 +42,12 @@ export function SharedDiagramView({ diagramId }: SharedDiagramViewProps) {
 
     fetchDiagram();
   }, [diagramId]);
+
+  useEffect(() => {
+    if (diagram) {
+      DiagramRenderer.render(diagram.content, 'diagram-container').catch(console.error);
+    }
+  }, [diagram]);
 
   if (isLoading) {
     return (
@@ -105,10 +111,7 @@ export function SharedDiagramView({ diagramId }: SharedDiagramViewProps) {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow-sm border">
-          <DiagramRenderer 
-            content={diagram.content} 
-            readOnly={true}
-          />
+          <div id="diagram-container" className="w-full h-full p-4" style={{ minHeight: '400px' }} />
         </div>
       </main>
     </div>

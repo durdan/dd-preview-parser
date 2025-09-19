@@ -1,14 +1,13 @@
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
+import bcrypt from 'bcryptjs';
+import { storage } from '@/lib/storage';
 
-// For development, we'll use a simple in-memory session
-// In production, you should configure MongoDB properly
 export const authOptions: NextAuthOptions = {
-  // Disable database adapter for now to avoid MongoDB connection issues
-  // adapter: MongoDBAdapter(clientPromise),
   secret: process.env.NEXTAUTH_SECRET || 'development-secret-key',
   session: {
     strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   providers: [
     CredentialsProvider({
@@ -22,30 +21,33 @@ export const authOptions: NextAuthOptions = {
           throw new Error('Email and password required');
         }
 
-        // For development, accept any email/password combination
-        // In production, implement proper authentication
-        if (credentials.email && credentials.password) {
-          return {
-            id: '1',
-            email: credentials.email,
-            name: credentials.email.split('@')[0],
-          };
+        // Find user in our in-memory storage
+        const user = storage.findUserByEmail(credentials.email);
+        
+        if (!user) {
+          throw new Error('Invalid credentials');
         }
 
-        return null;
+        // Verify password
+        const isValidPassword = await bcrypt.compare(credentials.password, user.password);
+        
+        if (!isValidPassword) {
+          throw new Error('Invalid credentials');
+        }
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+        };
       }
     })
   ],
-  session: {
-    strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-  },
   jwt: {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   pages: {
     signIn: '/auth/login',
-    signUp: '/auth/register',
   },
   callbacks: {
     async jwt({ token, user }) {

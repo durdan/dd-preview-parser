@@ -4,7 +4,7 @@ import { memo, useState } from 'react';
 import { MoreVertical, Edit, Trash2, Eye } from 'lucide-react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
-import { Diagram } from '@/types/diagram';
+import { Diagram } from '@/src/types/diagram';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -66,13 +66,13 @@ const DiagramCard = memo(function DiagramCard({
             </h3>
             
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+              <DropdownMenuTrigger>
                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                   <MoreVertical className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem asChild>
+              <DropdownMenuContent>
+                <DropdownMenuItem>
                   <Link href={`/editor/${diagram.id}`} className="flex items-center">
                     <Edit className="w-4 h-4 mr-2" />
                     Edit

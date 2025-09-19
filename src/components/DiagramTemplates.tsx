@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { templateData, DiagramTemplate, TemplateCategory } from './templates/templateData';
+import { templateData, templateCategories, DiagramTemplate, TemplateCategory } from './templates/templateData';
 
 interface DiagramTemplatesProps {
   onTemplateSelect: (template: DiagramTemplate) => void;
@@ -15,10 +14,9 @@ export const DiagramTemplates: React.FC<DiagramTemplatesProps> = ({
   onTemplateSelect,
   onClose
 }) => {
-  const [selectedCategory, setSelectedCategory] = useState<TemplateCategory>('flowchart');
-  const [selectedType, setSelectedType] = useState<'mermaid' | 'plantuml'>('mermaid');
+  const [selectedCategory, setSelectedCategory] = useState<string>('sequence');
 
-  const currentTemplates = templateData[selectedType][selectedCategory] || [];
+  const currentTemplates = templateData.filter(template => template.category === selectedCategory);
 
   const handleTemplateSelect = (template: DiagramTemplate) => {
     onTemplateSelect(template);
@@ -38,27 +36,20 @@ export const DiagramTemplates: React.FC<DiagramTemplatesProps> = ({
         </div>
 
         <div className="p-6">
-          <Tabs value={selectedType} onValueChange={(value) => setSelectedType(value as 'mermaid' | 'plantuml')}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="mermaid">Mermaid</TabsTrigger>
-              <TabsTrigger value="plantuml">PlantUML</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value={selectedType} className="mt-4">
-              <div className="flex gap-4">
+          <div className="flex gap-4">
                 {/* Category Sidebar */}
                 <div className="w-48 space-y-2">
                   <h3 className="font-semibold text-sm text-gray-600 uppercase tracking-wide">
                     Categories
                   </h3>
-                  {Object.keys(templateData[selectedType]).map((category) => (
+                  {templateCategories.map((category) => (
                     <Button
-                      key={category}
-                      variant={selectedCategory === category ? "default" : "ghost"}
+                      key={category.id}
+                      variant={selectedCategory === category.id ? "default" : "ghost"}
                       className="w-full justify-start text-left"
-                      onClick={() => setSelectedCategory(category as TemplateCategory)}
+                      onClick={() => setSelectedCategory(category.id)}
                     >
-                      {category.charAt(0).toUpperCase() + category.slice(1)}
+                      {category.name}
                     </Button>
                   ))}
                 </div>
@@ -78,8 +69,6 @@ export const DiagramTemplates: React.FC<DiagramTemplatesProps> = ({
                   </ScrollArea>
                 </div>
               </div>
-            </TabsContent>
-          </Tabs>
         </div>
       </div>
     </div>
@@ -98,7 +87,7 @@ const TemplateCard: React.FC<TemplateCardProps> = ({ template, onSelect }) => {
         <div className="flex justify-between items-start">
           <CardTitle className="text-lg">{template.name}</CardTitle>
           <Badge variant="secondary" className="text-xs">
-            {template.type}
+            {template.category}
           </Badge>
         </div>
         <p className="text-sm text-gray-600">{template.description}</p>
@@ -106,7 +95,7 @@ const TemplateCard: React.FC<TemplateCardProps> = ({ template, onSelect }) => {
       <CardContent>
         <div className="bg-gray-50 rounded p-3 mb-3">
           <pre className="text-xs overflow-x-auto">
-            <code>{template.code.substring(0, 200)}...</code>
+            <code>{template.content.substring(0, 200)}...</code>
           </pre>
         </div>
         <Button onClick={onSelect} className="w-full">

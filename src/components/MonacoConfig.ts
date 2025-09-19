@@ -40,7 +40,7 @@ export function registerDiagramLanguage() {
   });
 }
 
-export const MONACO_OPTIONS: editor.IStandaloneEditorConstructionOptions = {
+export const MONACO_OPTIONS: monaco.editor.IStandaloneEditorConstructionOptions = {
   theme: 'diagram-theme',
   fontSize: 14,
   lineNumbers: 'on',
