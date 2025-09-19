@@ -1,0 +1,22 @@
+{
+  "version": "1.0",
+  "description": "Manifest for tracking documentation processing steps.",
+  "steps": [
+    {
+      "step": "Collect initial documentation",
+      "status": "completed"
+    },
+    {
+      "step": "Review and edit content",
+      "status": "completed"
+    },
+    {
+      "step": "Generate output files",
+      "status": "completed"
+    },
+    {
+      "step": "Organize output files into final structure",
+      "status": "in progress"
+    }
+  ]
+}
