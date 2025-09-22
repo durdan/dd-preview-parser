@@ -1,0 +1,6 @@
+{
+    "source_dir": "source",
+    "output_dir": "wiki",
+    "template_dir": "templates",
+    "file_extensions": [".md", ".txt"]
+}
