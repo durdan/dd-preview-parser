@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Wiki - DevIn Style Documentation</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo">
+            <h2>📚 Project Wiki</h2>
+        </div>
+        <ul class="nav-links">
+            <li><a href="#overview" class="active">Overview</a></li>
+            <li><a href="#architecture">Architecture</a></li>
+            <li><a href="#modules">Modules</a></li>
+            <li><a href="#api-reference">API Reference</a></li>
+            <li><a href="#getting-started">Getting Started</a></li>
+        </ul>
+        
+        <div class="module-nav">
+            <h3>Modules</h3>
+            <ul>
+                <li><a href="core.html">Core Module</a></li>
+                <li><a href="services.html">Services</a></li>
+                <li><a href="utils.html">Utilities</a></li>
+                <li><a href="models.html">Data Models</a></li>
+                <li><a href="api.html">API Layer</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="content">
+        <header class="page-header">
+            <h1>Project Documentation</h1>
+            <p class="subtitle">Comprehensive developer documentation and API reference</p>
+        </header>
+
+        <section id="overview" class="section">
+            <h2>🎯 Project Overview</h2>
+            <div class="card">
+                <p>This project implements a modular, scalable application architecture following clean code principles and separation of concerns. The codebase is organized into distinct layers with clear responsibilities.</p>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>5</h3>
+                        <p>Core Modules</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>12</h3>
+                        <p>Service Classes</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>8</h3>
+                        <p>Data Models</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>15</h3>
+                        <p>API Endpoints</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="architecture" class="section">
+            <h2>🏗️ System Architecture</h2>
+            <div class="card">
+                <div class="architecture-diagram">
+                    <div class="layer api-layer">
+                        <h3>API Layer</h3>
+                        <div class="components">
+                            <span>Controllers</span>
+                            <span>Middleware</span>
+                            <span>Routes</span>
+                        </div>
+                    </div>
+                    <div class="arrow">↓</div>
+                    <div class="layer service-layer">
+                        <h3>Service Layer</h3>
+                        <div class="components">
+                            <span>Business Logic</span>
+                            <span>Validation</span>
+                            <span>Processing</span>
+                        </div>
+                    </div>
+                    <div class="arrow">↓</div>
+                    <div class="layer data-layer">
+                        <h3>Data Layer</h3>
+                        <div class="components">
+                            <span>Models</span>
+                            <span>Repositories</span>
+                            <span>Database</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <h3>Key Principles</h3>
+                <ul class="principle-list">
+                    <li><strong>Single Responsibility:</strong> Each module has one clear purpose</li>
+                    <li><strong>DRY (Don't Repeat Yourself):</strong> Common logic is abstracted into utilities</li>
+                    <li><strong>Fail Fast:</strong> Input validation and error handling at boundaries</li>
+                    <li><strong>Extensibility:</strong> Designed for easy feature additions</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="modules" class="section">
+            <h2>📦 Module Overview</h2>
+            <div class="modules-grid">
+                <div class="module-card">
+                    <h3><a href="core.html">Core Module</a></h3>
+                    <p>Foundation classes and interfaces that define the application's core behavior.</p>
+                    <div class="module-stats">
+                        <span>4 Classes</span>
+                        <span>2 Interfaces</span>
+                    </div>
+                </div>
+                
+                <div class="module-card">
+                    <h3><a href="services.html">Services</a></h3>
+                    <p>Business logic implementation and service orchestration layer.</p>
+                    <div class="module-stats">
+                        <span>6 Services</span>
+                        <span>3 Validators</span>
+                    </div>
+                </div>
+                
+                <div class="module-card">
+                    <h3><a href="utils.html">Utilities</a></h3>
+                    <p>Helper functions and common utilities used across the application.</p>
+                    <div class="module-stats">
+                        <span>8 Functions</span>
+                        <span>2 Constants</span>
+                    </div>
+                </div>
+                
+                <div class="module-card">
+                    <h3><a href="models.html">Data Models</a></h3>
+                    <p>Data structures and entity definitions with validation rules.</p>
+                    <div class="module-stats">
+                        <span>5 Models</span>
+                        <span>3 Schemas</span>
+                    </div>
+                </div>
+                
+                <div class="module-card">
+                    <h3><a href="api.html">API Layer</a></h3>
+                    <p>REST API endpoints, controllers, and request/response handling.</p>
+                    <div class="module-stats">
+                        <span>4 Controllers</span>
+                        <span>15 Endpoints</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="getting-started" class="section">
+            <h2>🚀 Getting Started</h2>
+            <div class="card">
+                <h3>Quick Start</h3>
+                <pre><code># Install dependencies
+npm install
+
+# Run tests
+npm test
+
+# Start development server
+npm run dev
+
+# Build for production
+npm run build</code></pre>
+                
+                <h3>Project Structure</h3>
+                <pre><code>src/
+├── core/           # Core application logic
+├── services/       # Business services
+├── models/         # Data models
+├── utils/          # Utility functions
+├── api/           # API controllers
+└── tests/         # Test suites</code></pre>
+            </div>
+        </section>
+    </main>
+</body>
+</html>
